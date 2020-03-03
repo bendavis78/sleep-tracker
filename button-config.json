@@ -1,0 +1,5 @@
+{
+  "ledPin": 17,
+  "buttonPin": 27,
+  "cooldownTime": 15
+}
