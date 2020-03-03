@@ -80,7 +80,6 @@ function setState(code) {
 const button = new BigRedButton(0);
 
 button.on('buttonReleased', function () {
-  console.log('button pressed', state);
   if (state == 'IN_BED' || state == 'SLEEPING' || state == 'AWAKE') {
     if (state == 'SLEEPING') {
       setState('AWAKE');
@@ -88,7 +87,7 @@ button.on('buttonReleased', function () {
     // reset sleep timeout
     stopBlink();
     if (sleepTimer) clearTimeout(sleepTimer);
-    console.log('sleeping in', cooldownTime, 'minutes');
+    console.log('button pressed, sleeping in', cooldownTime, 'minutes');
     sleepTimer = setTimeout(() => {
       // in 15 minutes, set state to SLEEPING
       startBlink();
@@ -104,6 +103,7 @@ button.on('lidRaised', function () {
 
 button.on('lidClosed', function () {
   setState('OUT_OF_BED');
+  if (sleepTimer) clearTimeout(sleepTimer);
 });
 
 button.on('error', function (error) {
