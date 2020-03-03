@@ -1,0 +1,5 @@
+{
+  "debug": true,
+  "locale": "en-US",
+  "db": "/tmp/testsort"
+}

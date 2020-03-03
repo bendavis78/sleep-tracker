@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Entries</h2>
+<table class="table">
+  <thead>
+    <tr><th>Date</th></tr>
+  </thead>
+  {% for entry in entries %}
+  <tr>
+    <td>
+      <a href="/entries/{{ entry.doc.timestamp }}">{{ entry.doc.timestamp|date("L") }}</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
