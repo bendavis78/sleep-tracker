@@ -1,11 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Events</h2>
-{% for event in events %}
-<p>
-  <a href="/events/{{ event.doc.timestamp }}">
-    {{ event.doc.timestamp|date("llll") }}
-  </a>
-</p>
-{% endfor %}
+<table class="table">
+  <thead>
+    <th>Timestamp</th><th>Event type</th>
+  </thead>
+  <tbody>
+    {% for event in events %}
+    <tr>
+      <td>
+        <a href="{{ url('event', {timestamp: event.doc.timestamp}) }}">
+          {{ event.doc.timestamp|date("llll") }}
+        </a>
+      </td>
+      <td>{{ event.doc.type }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

@@ -5,6 +5,7 @@
     "debug-error-middleware": "^1.3.0",
     "express": "^4.17.1",
     "moment": "^2.24.0",
+    "named-routes": "^2.0.7",
     "nunjucks": "^3.2.0",
     "pouchdb": "^7.2.1"
   }

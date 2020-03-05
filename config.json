@@ -1,5 +1,6 @@
 {
+  "prefix": "/sleep-tracker",
   "debug": true,
   "locale": "en-US",
-  "db": "/tmp/testsort"
+  "db": "/home/ben/.local/share/sleeplog"
 }
