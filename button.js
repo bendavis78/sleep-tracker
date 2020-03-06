@@ -12,12 +12,28 @@ const Gpio = require('onoff').Gpio;
 const BigRedButton = require('big-red-button').BigRedButton;
 const PouchDB = require('pouchdb');
 
+// default config values
+const dbPath = config.dbPath || 'db';
 const cooldownTime = config.cooldownTime || 15;
 const flashTime = config.flashTime || 100;
 const blinkInterval = config.blinkInterval || 2000;
 const sleepTimeout = cooldownTime * 60 * 1000;
 
-const db = new PouchDB(config.dbPath || 'db');
+console.log('Using database:', dbPath);
+const db = new PouchDB(dbPath);
+
+let remote = null;
+if (config.remote) {
+  console.log('Syncing to ', config.remote);
+  let remote = PouchDB(config.remote);
+  const replicateOpts = {
+    live: true,
+    retry: true
+  }
+  db.replicate.to(remote, replicateOpts)
+    .on('complete', change => console.log('replication complete'))
+    .on('error', error => console.error('Error while syncing to remote: ' + error));
+}
 
 console.log('Setting up led on pin', config.ledPin);
 const led = new Gpio(config.ledPin, 'out');
@@ -37,25 +53,37 @@ let state = null;
 let blinker = null;
 let sleepTimer = null;
 
+/**
+ * Trun LED on for a specified amount of time then turn off
+ */
 function flash(time) {
   led.writeSync(1);
   setTimeout(() => led.writeSync(0), time);
 }
 
+/**
+ * Blink LED N times at the given interval
+ */
 function blinkN(times, interval) {
   if (!times) return;
   flash(flashTime);
   setTimeout(() => {
-    blinkN(times-1, interval);
+    return blinkN(times-1, interval);
   }, interval);
 }
 
+/**
+ * Start blinking the LED
+ */
 function startBlink() {
   blinker = setInterval(() => {
     flash(flashTime);
   }, blinkInterval);
 }
 
+/**
+ * Stop blinking the LED
+ */
 function stopBlink() {
   if (blinker) {
     clearInterval(blinker);
@@ -63,30 +91,48 @@ function stopBlink() {
   }
 }
 
-function logEvent(data) {
+/**
+ * Log an event to the database
+ */
+async function logEvent(data) {
   const timestamp = (new Date()).getTime();
   data._id = 'event:' + timestamp;
-  return db.put(data).catch(error => {
+  data.timestamp = timestamp;
+  data.entryId = null;
+  await db.put(data).catch(error => {
     console.log(error);
   });
 }
 
-function setState(code) {
+/**
+ * Change the current state and log it to the database
+ */
+async function setState(code) {
   console.log(code);
-  logEvent({type: code});
   state = code;
+  await logEvent({type: code});
 }
 
 const button = new BigRedButton(0);
 
-button.on('buttonReleased', function () {
+/**
+ * IN_BED -> SLEEP_START -> SLEEPING -> [AWAKE,  SLEEPING]* -> AWAKE -> OUT_OF_BED
+ */
+button.on('buttonReleased', () => {
   if (state == 'IN_BED' || state == 'SLEEPING' || state == 'AWAKE') {
     if (state == 'SLEEPING') {
       setState('AWAKE');
     }
+    if (state == 'IN_BED') {
+      setState('SLEEP_START')
+    }
     // reset sleep timeout
     stopBlink();
     if (sleepTimer) clearTimeout(sleepTimer);
+
+    // blink the light to indicate we've pressed the button
+    blinkN(2, 250);
+
     console.log('button pressed, sleeping in', cooldownTime, 'minutes');
     sleepTimer = setTimeout(() => {
       // in 15 minutes, set state to SLEEPING
@@ -96,20 +142,19 @@ button.on('buttonReleased', function () {
   }
 });
 
-button.on('lidRaised', function () {
+button.on('lidRaised', () => {
   setState('IN_BED');
   blinkN(3, 250);
 });
 
-button.on('lidClosed', function () {
+button.on('lidClosed', () => {
   setState('OUT_OF_BED');
   if (sleepTimer) clearTimeout(sleepTimer);
 });
 
-button.on('error', function (error) {
+button.on('error', error => {
   console.error(error);
 });
-
 
 process.on('SIGINT', () => {
   console.log('\nreceived SIGINT')

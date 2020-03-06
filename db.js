@@ -17,6 +17,11 @@ function setupIndexes(db) {
   });
   db.createIndex({
     index: {
+      fields: ['_id', 'entryId']
+    }
+  });
+  db.createIndex({
+    index: {
       fields: ['entryId', 'type']
     }
   });
@@ -30,7 +35,7 @@ function setupIndexes(db) {
 let db;
 function getDatabase() {
   if (!db) {
-    console.log('Using database', config.db);
+    console.log('Using database', config.dbName);
     db = PouchDB(config.dbName);
   }
   setupIndexes(db);

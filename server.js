@@ -8,6 +8,10 @@ const NamedRouter = require('named-routes');
 const database = require('./db');
 const utils = require('./utils');
 
+const pouchOptions = {
+  logPath: '/tmp/log.txt'
+};
+
 const db = database.getDatabase();
 
 config.port = config.port || 3000;
@@ -57,6 +61,19 @@ template.addFilter('date', (date, format) => {
   return moment(date).format(format);
 });
 
+template.addFilter('duration', (duration) => {
+  const seconds = Math.round(duration / 1000);
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.round(minutes / 60);
+  if (hours >= 1) {
+    return Math.floor(hours) + 'h ' + (minutes % 60) + 'm';
+  }
+  if (minutes >= 1) {
+    return minutes + 'm ' + seconds + 's';
+  }
+  return seconds + 's';
+});
+
 template.addFilter('json', (obj, indent) => {
   return JSON.stringify(obj, null, ' '.repeat(indent));
 })
@@ -66,50 +83,45 @@ router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
 
 router.get('/', 'home', (req, res, next) => {
-  // get unlogged IN_BED events
+  // get unlogged events and group by day
   db.find({
     selector: {
-      entryId: {$eq: null},
-      type: {$eq: 'IN_BED'}
+      _id: {$gt: 'event:', $lt: 'event:\uffff'},
+      entryId: {$eq: null}
     }
   }).then(result => result.docs).then(events => {
     const context = getContext(req, res);
+    const days = new Map();
     events.forEach(event => {
-      event.date = utils.getBedtimeDate(event.timestamp);
+      date = utils.getBedtimeDate(event.timestamp).getTime();
+      let dateObj = days.get(date);
+      if (!dateObj) {
+        dateObj = {date: date, events: []}
+        days.set(date, dateObj);
+      }
+      dateObj.events.push(event);
     });
-    context.unloggedEvents = events;
+    context.unloggedDays = [];
+    days.forEach((dateObj, date) => {
+      context.unloggedDays.push({
+        date: date,
+        firstEvent: dateObj.events[0]._id,
+        lastEvent: dateObj.events[dateObj.events.length - 1]._id
+      });
+    });
     res.render('home.html', context);
   }).catch(error => next(error));
 });
 
 router.post('/entries', 'entries', async (req, res, next) => {
   if (req.body.action == 'createFromEvent') {
-    // find all events from this event until OUT_OF_BED
     try {
-      const firstEvent = await db.get(req.body.eventId);
-      if (firstEvent.type !== 'IN_BED') {
-        throw new Error('First event type must be "IN_BED"');
-      }
-      let result;
-      // get the next OUT_OF_BED event
-      result = await db.find({
-        selector: {
-          entryId: {$eq: null},
-          type: 'OUT_OF_BED',
-          timestamp: {$gt: firstEvent.timestamp}
-        },
-        limit: 1
-      });
-
-      const lastEvent = result.docs[0];
-
-      // get all events between first and last event
       result = await db.allDocs({
         include_docs: true,
-        attachments: true,
-        startkey: firstEvent._id,
-        endkey: lastEvent._id
+        startkey: req.body.firstEvent,
+        endkey: req.body.lastEvent
       });
+
       const events = result.rows.map(row => row.doc);
       
       // create the entry
@@ -153,6 +165,19 @@ router.get('/entries/:date', 'entry', (req, res, next) => {
   db.get('entry:' + date).then(doc => {
     context.entry = doc;
     res.render('entry.html', context)
+  }).catch(error => next(error));
+});
+
+router.post('/entries/:date', 'entry', async (req, res, next) => {
+  const date = req.params.date;
+  db.get('entry:' + date).then(doc => {
+    if (req.body.action == 'delete') {
+      return utils.deleteEntry(doc).then(() => {
+        res.redirect(url('entries'));
+      });
+    } else {
+      res.redirect(url('entry', {date: date}));
+    }
   }).catch(error => next(error));
 });
 
@@ -200,7 +225,8 @@ router.post('/events/:timestamp', 'event', async (req, res, next) => {
   }).catch(error => next(error));
 });
 
-app.use(path.posix.join(config.prefix, 'db'), require('express-pouchdb')(database.PouchDB));
+
+app.use(path.posix.join(config.prefix, 'db'), require('express-pouchdb')(database.PouchDB, pouchOptions));
 app.use(path.posix.join(config.prefix, 'static'), express.static(__dirname + '/static'))
 app.use(config.prefix, router);
 

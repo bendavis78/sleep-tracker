@@ -1,5 +1,7 @@
 {
   "ledPin": 17,
   "buttonPin": 27,
-  "cooldownTime": 15
+  "cooldownTime": 15,
+  "dbPath": "/home/pi/.local/share/sleeplog",
+  "remote": "https://home.bendavis.net/sleep-tracker/db/sleeplog"
 }

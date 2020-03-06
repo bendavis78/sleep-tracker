@@ -1,5 +1,57 @@
 {% extends "base.html" %}
+{% block extracss %}
+<style>
+table, form {
+  margin-bottom: 2em;
+}
+.collapsible {
+  box-shadow: none;
+  -webkit-box-shadow: none;
+}
+</style>
+{% endblock %}
 {% block content %}
 <h1>Entry - {{ entry.date|date("ll") }}</h1>
-<pre>{{ entry|json(2) }}</pre>
+<table class="table">
+  <tbody>
+    <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
+    <tr><th>Lights out:</th><td>{{ entry.sleepStartTime|date("h:mm a") }}</td></tr>
+    <tr><th>Fell asleep:</th><td>{{ entry.fallAsleepTime|date("h:mm a") }}</td></tr>
+    <tr><th>First awaking:</th><td>{{ entry.firstAwakeningTime|date("h:mm a") }}</td></tr>
+    <tr><th>Woke up:</th><td>{{ entry.wakeUpTime|date("h:mm a") }}</td></tr>
+    <tr><th>Out of bed:</th><td>{{ entry.outOfBedTime|date("h:mm a") }}</td></tr>
+    <tr><th>Time in bed:</th><td>{{ entry.timeInBed|duration }}</td></tr>
+    <tr><th>Time asleep:</th><td>{{ entry.timeAsleep|duration }}</td></tr>
+    <tr><th>Time awakened:</th><td>{{ entry.timeAwakened|duration }}</td></tr>
+    <tr><th>Total awakenings:</th><td>{{ entry.numAwakenings }}</td></tr>
+  </tbody>
+</table>
+
+<form method="post">
+  <input type="hidden" name="action" value="delete">
+  <button class="btn" type="submit">Delete</button>
+</form>
+
+<ul class="collapsible">
+  <li>
+    <div class="collapsible-header">Events</div>
+    <div class="collapsible-body">
+      <table class="table">
+        <tbody>
+          {% for event in entry.events %}
+          <tr><td>{{ event.timestamp|date("h:mm a") }}</td><td>{{ event.type }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </li>
+</ul>
+{% endblock %}
+
+{% block extrajs %}
+{{ super() }}
+<script>
+  var elems = document.querySelectorAll('.collapsible');
+  M.Collapsible.init(elems, {accordian: true});
+</script>
 {% endblock %}

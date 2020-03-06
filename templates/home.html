@@ -12,14 +12,14 @@
 {% endblock %}
 
 {% block content %}
-{% if unloggedEvents|length %}
+{% if unloggedDays|length %}
 <div class="row">
   <ul class="col l6 offset-l3 m8 offset-m2 s12 collection with-header unlogged-events">
-    <li class="collection-header"><h5>Unlogged Events</h5></li>
-    {% for event in unloggedEvents %}
+    <li class="collection-header"><h5>Unlogged Nights</h5></li>
+    {% for day in unloggedDays %}
     <li class="collection-item">
-      {{ event.date|date("dddd,  MMMM d, YYYY") }}
-      <a class="secondary-content" data-event-id="{{ event._id }}">
+      {{ day.date|date("dddd,  MMMM D, YYYY") }}
+      <a class="secondary-content" data-first-event="{{ day.firstEvent }}" data-last-event="{{ day.lastEvent }}">
         Create Entry
       </a>
     </li>
@@ -29,18 +29,21 @@
 {% endif %}
 <form method="post" action="{{ url("entries") }}" id="actionForm">
   <input type="hidden" name="action" value="createFromEvent">
-  <input type="hidden" name="eventId">
+  <input type="hidden" name="firstEvent">
+  <input type="hidden" name="lastEvent">
 </form>
 {% endblock %}
 
 {% block extrajs %}
 {{ super() }}
 <script>
-  document.querySelectorAll('.unlogged-events li a[data-event-id]').forEach(function(event) {
+  document.querySelectorAll('.unlogged-events .collection-item a').forEach(function(event) {
     event.addEventListener('click', function() {
       var form = document.getElementById('actionForm');
-      var eventId = form.querySelector('[name="eventId"]');
-      eventId.value = this.dataset.eventId;
+      var firstEvent = form.querySelector('[name="firstEvent"]');
+      var lastEvent = form.querySelector('[name="lastEvent"]');
+      firstEvent.value = this.dataset.firstEvent;
+      lastEvent.value = this.dataset.lastEvent;
       form.submit();
     });
   });
