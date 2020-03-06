@@ -7,11 +7,14 @@
   </thead>
   <tbody>
     {% for entry in entries %}
+    {% if entry.date %}
     <tr>
       <td>
-        <a href="entries/{{ entry.doc.timestamp }}">{{ entry.doc.timestamp|date("L") }}</a>
+        {% set datestr = entry.date|date("YYYY-MM-DD") %}
+        <a href="{{ url("entry", {date: datestr}) }}">{{ entry.date|date("L") }}</a>
       </td>
     </tr>
+    {% endif %}
     {% endfor %}
   </tbody>
 </table>

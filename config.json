@@ -2,5 +2,9 @@
   "prefix": "/sleep-tracker",
   "debug": true,
   "locale": "en-US",
-  "db": "/home/ben/.local/share/sleeplog"
+  "dbPath": "/home/ben/.local/share/pouchdb",
+  "dbName": "sleeplog",
+  "couchdb": {
+    "uuid": "7e365159-3dee-4e06-a078-66e315714b70"
+  }
 }

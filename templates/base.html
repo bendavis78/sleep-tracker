@@ -6,8 +6,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="icon" sizes="192x192" href="/static/icon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <title>Sleep Log</title>
+    {% block extracss %}
+    {% endblock %}
   </head>
   <body>
     <nav class="light-blue lighten-1" role="navigation">
@@ -70,6 +73,11 @@
       </div>
     </footer>
     -->
-
+    {% block extrajs %}
+    <script>
+      var elems = document.querySelectorAll('.sidenav');
+      var instances = M.Sidenav.init(elems, {});
+    </script>
+    {% endblock %}
   </body>
 </html>

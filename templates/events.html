@@ -9,11 +9,11 @@
     {% for event in events %}
     <tr>
       <td>
-        <a href="{{ url('event', {timestamp: event.doc.timestamp}) }}">
-          {{ event.doc.timestamp|date("llll") }}
+        <a href="{{ url('event', {timestamp: event.timestamp}) }}">
+          {{ event.timestamp|date("llll") }}
         </a>
       </td>
-      <td>{{ event.doc.type }}</td>
+      <td>{{ event.type }}</td>
     </tr>
     {% endfor %}
   </tbody>

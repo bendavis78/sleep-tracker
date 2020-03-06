@@ -1,5 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Entry - {{ entry.timestamp|date("ll") }}</h1>
+<h1>Entry - {{ entry.date|date("ll") }}</h1>
 <pre>{{ entry|json(2) }}</pre>
 {% endblock %}
