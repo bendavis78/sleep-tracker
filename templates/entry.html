@@ -9,13 +9,15 @@ table, form {
   -webkit-box-shadow: none;
 }
 #chart {
+  display: flex;
   margin: 1em 0;
   height: 50px;
   border: 1px solid #ccc;
 }
 #chart .event {
-  display: inline-block;
-  height: 100%;
+  margin: 2px;
+  min-width: 10px;
+  background: #eee;
 }
 </style>
 {% endblock %}
@@ -51,17 +53,20 @@ table, form {
   var events = {{ entry.serializedEvents|safe }};
   var totalTime = events[events.length-1].timestamp - events[0].timestamp;
   var chart = document.querySelector('#chart');
-  for (var i=1; i<events.length; i++) {
+  for (var i=0; i<events.length; i++) {
     var event = events[i];
-    var percent = ((event.timestamp - events[i-1].timestamp) / totalTime) * 100;
+    if (events[i-1]) {
+      var percent = ((event.timestamp - events[i-1].timestamp) / totalTime) * 100;
+    } else {
+      var percent = 0;
+    }
     var div = document.createElement('div');
     div.classList.add('event');
     div.classList.add('event-' + event.type.toLowerCase());
     div.dataset.timestamp = event.timestamp;
     div.dataset.type = event.type.toLowerCase().replace('_', '-');
-    div.style.width = percent + '%';
+    div.style.flexBasis = percent + '%';
     var timeStr = moment(new Date(event.timestamp)).format("h:mm a");
-    var durationStr = 
     div.setAttribute('title', event.type.toLowerCase().replace('_', ' '));
     chart.appendChild(div);
   }

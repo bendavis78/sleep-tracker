@@ -50,14 +50,14 @@ class Entry extends PouchModel {
   }
 
   get events() {
-    if (!super.events) {
+    if (!super.get('events')) {
       return [];
     }
-    return super.events.map(doc => new Event(doc));
+    return super.get('events').map(doc => new Event(doc));
   }
 
   set events(events) {
-    super.events = events.map(event => event.__doc);
+    super.set('events', events.map(event => event.__doc));
   }
 
   get serializedEvents() {
@@ -105,6 +105,10 @@ class Entry extends PouchModel {
       let nextEvent = events[i+1];
       let lastEvent = events[i-1];
 
+      if (i == 0) {
+        date = utils.getBedtimeDate(event.timestamp, config.cutoffHour) || null;
+      }
+
       if (lastEvent) {
         event.duration = event.timestamp - lastEvent.timestamp;
       }
@@ -145,7 +149,7 @@ class Entry extends PouchModel {
     this.timeAsleep = timeAsleep;
     this.timeAwakened = timeAwakened;
     this.numAwakenings = numAwakenings;
-    this.date = utils.getBedtimeDate(events[0].timestamp, config.cutoffHour);
+    this.date = date;
   }
 
   async delete() {
