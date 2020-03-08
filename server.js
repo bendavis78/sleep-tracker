@@ -1,18 +1,29 @@
+const fs = require('fs');
 const path = require('path');
+const browserify = require('browserify');
 const express = require('express');
-const nunjucks = require('nunjucks');
-const config = require('./config.json');
-const moment = require('moment');
-const debugMiddleware = require('debug-error-middleware').express;
+const bodyParser = require('body-parser');
 const NamedRouter = require('named-routes');
-const database = require('./db');
+const debugMiddleware = require('debug-error-middleware');
+const nunjucks = require('nunjucks');
+const moment = require('moment');
+const expressPouchDB = require('express-pouchdb');
+
+const config = require('./config');
 const utils = require('./utils');
+const database = require('./db');
+const {Event, Entry} = require('./models');
 
-const pouchOptions = {
-  logPath: '/tmp/log.txt'
-};
+config.pouch = config.pouch || {};
+config.pouch.logPath = config.pouch.logPath || '/tmp/' + config.dbName + '.pouchdb.log';
+config.pouch.configPath = config.pouch.configPath || '/tmp/' + config.dbName + '-pouchdb-config.json';
 
-const db = database.getDatabase();
+const dirname = path.dirname(process.argv[1]);
+
+const PouchServer = expressPouchDB(database.PouchDB, config.pouch);
+
+const STATIC_DIR = path.join(dirname, 'static');
+const TEMPLATES_DIR = path.join(dirname, 'templates')
 
 config.port = config.port || 3000;
 config.locale = config.locale || 'en-US';
@@ -26,10 +37,10 @@ const urls = new NamedRouter();
 urls.extendExpress(router);
 
 if (config.debug) {
-  app.use(debugMiddleware());
+  app.use(debugMiddleware.express());
 }
 
-const template = nunjucks.configure(path.join(__dirname , 'templates'), {
+const template = nunjucks.configure(TEMPLATES_DIR, {
   noCache: true,
   autoescape: true,
   express: app
@@ -46,10 +57,13 @@ function getContext(req, res) {
   return {};
 }
 
-function url(name, params, method) {
-  return config.prefix + urls.build(name, params, method);
+// template functions
+const url = app.locals['url'] = (name, params, method) => {
+  return path.posix.join(config.prefix, urls.build(name, params, method));
 }
-app.locals['url'] = url;
+const staticUrl = app.locals['static'] = (urlPath) => {
+  return path.posix.join(config.prefix, 'static', urlPath)
+}
 
 template.addFilter('date', (date, format) => {
   if (!date) {
@@ -62,42 +76,30 @@ template.addFilter('date', (date, format) => {
 });
 
 template.addFilter('duration', (duration) => {
-  const seconds = Math.round(duration / 1000);
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.round(minutes / 60);
-  if (hours >= 1) {
-    return Math.floor(hours) + 'h ' + (minutes % 60) + 'm';
-  }
-  if (minutes >= 1) {
-    return minutes + 'm ' + seconds + 's';
-  }
-  return seconds + 's';
+  return utils.formatDuration(duration);
 });
 
 template.addFilter('json', (obj, indent) => {
   return JSON.stringify(obj, null, ' '.repeat(indent));
 })
 
-var bodyParser = require('body-parser');
 router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
 
 router.get('/', 'home', (req, res, next) => {
   // get unlogged events and group by day
-  db.find({
+  Event.objects.find({
     selector: {
-      _id: {$gt: 'event:', $lt: 'event:\uffff'},
       entryId: {$eq: null}
     }
-  }).then(result => result.docs).then(events => {
+  }).then(events => {
     const context = getContext(req, res);
     const days = new Map();
     events.forEach(event => {
-      date = utils.getBedtimeDate(event.timestamp).getTime();
-      let dateObj = days.get(date);
+      let dateObj = days.get(event.date);
       if (!dateObj) {
-        dateObj = {date: date, events: []}
-        days.set(date, dateObj);
+        dateObj = {date: event.date, events: []}
+        days.set(event.date, dateObj);
       }
       dateObj.events.push(event);
     });
@@ -113,22 +115,58 @@ router.get('/', 'home', (req, res, next) => {
   }).catch(error => next(error));
 });
 
+router.get('/entries', 'entries', async (req, res, next) => {
+  const context = getContext(req, res);
+  let startDate = Date.parse(req.query.from);
+  let endDate = Date.parse(req.query.to);
+
+  const opts = {}
+
+  if (!isNaN(startDate)) opts.startkey = startDate.toString();
+  if (!isNaN(endDate)) opts.endkey = endDate.toString();
+
+  // get all sleep entries
+  try {
+    context.entries = await Entry.objects.all(opts);
+    res.render('entries.html', context)
+  } catch(error) {
+    next(error);
+  }
+});
+
+router.get('/entries/:date', 'entry', async (req, res, next) => {
+  const context = getContext(req, res);
+  const date = req.params.date;
+  try {
+    context.entry = await Entry.objects.get(date);
+    res.render('entry.html', context)
+  } catch(error) {
+    next(error);
+  }
+});
+
 router.post('/entries', 'entries', async (req, res, next) => {
   if (req.body.action == 'createFromEvent') {
     try {
-      result = await db.allDocs({
-        include_docs: true,
+      events = await Event.objects.all({
         startkey: req.body.firstEvent,
         endkey: req.body.lastEvent
       });
-
-      const events = result.rows.map(row => row.doc);
       
       // create the entry
-      result = await utils.createEntry(events);
-      const entry = await db.get(result.id);
-      const dateStr = moment(entry.date).format("YYYY-MM-DD")
-      res.redirect(url('entry', {date: dateStr}));
+      const entry = new Entry()
+      entry.events = Entry.cleanEvents(events);
+      entry.updateStats();
+      console.log('Creating entry', entry.dateStr);
+      await entry.save();
+
+      // update the events with the entryId
+      for (var i=0; i<events.length; i++) {
+        events[i].entryId = entry._id
+        await events[i].save();
+      }
+
+      res.redirect(url('entry', {date: entry.dateStr}));
     } catch(error) {
       return next(error);
     }
@@ -137,48 +175,19 @@ router.post('/entries', 'entries', async (req, res, next) => {
   }
 });
 
-router.get('/entries', 'entries', (req, res, next) => {
-  const context = getContext(req, res);
-  let startDate = Date.parse(req.query.from);
-  let endDate = Date.parse(req.query.to);
-  let startkey = 'entry:';
-  let endkey = 'entry\ufff0';
-
-  if (!isNaN(startDate)) startkey = 'entry:' + startDate.toString();
-  if (!isNaN(endDate)) endkey = 'entry:' + endDate.toString();
-
-  // get all sleep entries
-  db.allDocs({
-    include_docs: true,
-    attachments: true,
-    startkey: 'entry:',
-    endkey: 'entry:\ufff0'
-  }).then(result => {
-    context.entries = result.rows.map(row => row.doc);
-    res.render('entries.html', context)
-  }).catch(error => next(error));
-});
-
-router.get('/entries/:date', 'entry', (req, res, next) => {
-  const context = getContext(req, res);
-  const date = req.params.date;
-  db.get('entry:' + date).then(doc => {
-    context.entry = doc;
-    res.render('entry.html', context)
-  }).catch(error => next(error));
-});
-
 router.post('/entries/:date', 'entry', async (req, res, next) => {
   const date = req.params.date;
-  db.get('entry:' + date).then(doc => {
+  try {
+    const entry = await Entry.objects.get(date);
     if (req.body.action == 'delete') {
-      return utils.deleteEntry(doc).then(() => {
-        res.redirect(url('entries'));
-      });
+      await entry.delete();
+      res.redirect(url('entries'));
     } else {
       res.redirect(url('entry', {date: date}));
     }
-  }).catch(error => next(error));
+  } catch(error) {
+    next(error);
+  }
 });
 
 router.get('/events', 'events', async (req, res, next) => {
@@ -188,46 +197,44 @@ router.get('/events', 'events', async (req, res, next) => {
   let startkey = 'entry:';
   let endkey = 'entry\ufff0';
 
+  /* TODO use bedtime date */
+  /*
   if (!isNaN(startDate)) startkey = 'entry:' + startDate.toString();
   if (!isNaN(endDate)) endkey = 'entry:' + endDate.toString();
+  */
 
-  // get all sleep entries
-  await db.allDocs({
-    include_docs: true,
-    attachments: true,
-    startkey: 'event:',
-    endkey: 'event:\ufff0'
-  }).then(result => {
-    context.events = result.rows.map(row => row.doc);
-    res.render('events.html', context)
-  }).catch(error => next(error));
+  context.events = await Event.objects.all();
+  res.render('events.html', context)
 });
 
-router.get('/events/:timestamp', 'event', (req, res, next) => {
+router.get('/events/:timestamp', 'event', async (req, res, next) => {
   const context = getContext(req, res);
   const timestamp = req.params.timestamp;
-  db.get('event:' + timestamp).then(doc => {
-    context.event = doc;
-    res.render('event.html', context)
-  }).catch(error => next(error));
+  try {
+    context.event = await Event.objects.get(timestamp);
+    return res.render('event.html', context);
+  } catch(error) {
+    next(error);
+  }
 });
 
 router.post('/events/:timestamp', 'event', async (req, res, next) => {
   const timestamp = req.params.timestamp;
-  db.get('event:' + timestamp).then(doc => {
+  try {
+    const event = await Event.objects.get(timestamp);
     if (req.body.action == 'delete') {
-      return db.remove(doc).then(() => {
-        res.redirect(url('events'));
-      });
+      await event.delete();
+      res.redirect(url('events'));
     } else {
       res.redirect(url('event', {timestamp: timestamp}));
     }
-  }).catch(error => next(error));
+  } catch(error) {
+    next(error);
+  }
 });
 
-
-app.use(path.posix.join(config.prefix, 'db'), require('express-pouchdb')(database.PouchDB, pouchOptions));
-app.use(path.posix.join(config.prefix, 'static'), express.static(__dirname + '/static'))
+app.use(path.posix.join(config.prefix, 'db'), PouchServer);
+app.use(path.posix.join(config.prefix, 'static'), express.static(STATIC_DIR))
 app.use(config.prefix, router);
 
 app.listen(config.port, () => console.log(`listening on port ${config.port}`));

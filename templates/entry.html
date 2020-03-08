@@ -8,10 +8,20 @@ table, form {
   box-shadow: none;
   -webkit-box-shadow: none;
 }
+#chart {
+  margin: 1em 0;
+  height: 50px;
+  border: 1px solid #ccc;
+}
+#chart .event {
+  display: inline-block;
+  height: 100%;
+}
 </style>
 {% endblock %}
 {% block content %}
-<h1>Entry - {{ entry.date|date("ll") }}</h1>
+<h1>{{ entry.date|date("LL") }}</h1>
+<div id="chart"></div>
 <table class="table">
   <tbody>
     <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
@@ -32,26 +42,28 @@ table, form {
   <button class="btn" type="submit">Delete</button>
 </form>
 
-<ul class="collapsible">
-  <li>
-    <div class="collapsible-header">Events</div>
-    <div class="collapsible-body">
-      <table class="table">
-        <tbody>
-          {% for event in entry.events %}
-          <tr><td>{{ event.timestamp|date("h:mm a") }}</td><td>{{ event.type }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </li>
-</ul>
 {% endblock %}
 
 {% block extrajs %}
 {{ super() }}
 <script>
-  var elems = document.querySelectorAll('.collapsible');
-  M.Collapsible.init(elems, {accordian: true});
+  // build chart
+  var events = {{ entry.serializedEvents|safe }};
+  var totalTime = events[events.length-1].timestamp - events[0].timestamp;
+  var chart = document.querySelector('#chart');
+  for (var i=1; i<events.length; i++) {
+    var event = events[i];
+    var percent = ((event.timestamp - events[i-1].timestamp) / totalTime) * 100;
+    var div = document.createElement('div');
+    div.classList.add('event');
+    div.classList.add('event-' + event.type.toLowerCase());
+    div.dataset.timestamp = event.timestamp;
+    div.dataset.type = event.type.toLowerCase().replace('_', '-');
+    div.style.width = percent + '%';
+    var timeStr = moment(new Date(event.timestamp)).format("h:mm a");
+    var durationStr = 
+    div.setAttribute('title', event.type.toLowerCase().replace('_', ' '));
+    chart.appendChild(div);
+  }
 </script>
 {% endblock %}

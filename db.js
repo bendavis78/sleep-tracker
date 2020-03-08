@@ -1,4 +1,7 @@
-const config = require('./config.json');
+const config = require('./config');
+const pouchdb = require('pouchdb');
+const pouchdbFind = require('pouchdb-find');
+
 config.dbPath = config.dbPath || '/usr/local/share/pouchdb';
 config.dbName = config.dbName || 'sleeplog';
 
@@ -6,8 +9,8 @@ const defaults = {
   prefix: config.dbPath.replace(/\/$/, '/')
 }
 
-const PouchDB = require('pouchdb').defaults(defaults);
-PouchDB.plugin(require('pouchdb-find'));
+const PouchDB = pouchdb.defaults(defaults);
+PouchDB.plugin(pouchdbFind);
 
 function setupIndexes(db) {
   db.createIndex({
@@ -42,5 +45,5 @@ function getDatabase() {
   return db;
 }
 
-module.exports.getDatabase = getDatabase;
 module.exports.PouchDB = PouchDB;
+module.exports.getDatabase = getDatabase;
