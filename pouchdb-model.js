@@ -110,7 +110,7 @@ class PouchModel {
   }
 
   static get prefix() {
-    return this.name.toLowerCase();
+    return this.name.toLowerCase() + ':';
   }
 
   constructor(doc) {

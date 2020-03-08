@@ -8,7 +8,26 @@ PouchModel.setDatabase(db);
 
 config.minSleepTime = config.minSleepTime || 20;
 
+class EventManager extends PouchModel.manager {
+  async resetOrphanedEvents() {
+    const entries = await Entry.objects.all()
+    const entryIds = entries.map(entry => entry._id);
+    const events = await Event.objects.all();
+    const updatedEvents = [];
+    for (var i=0; i<events.length; i++) {
+      if (entryIds.indexOf(events[i].entryId) === -1) {
+        events[i].entryId = null;
+        await events[i].save();
+        updatedEvents.push(events[i]);
+      }
+    }
+    return updatedEvents;
+  }
+}
+
 class Event extends PouchModel {
+  static manager = EventManager;
+
   static fields = {
     entryId: null,
     timestamp: null,
@@ -28,6 +47,7 @@ class Event extends PouchModel {
 
 class Entry extends PouchModel {
   static fields = {
+    eventIds: _ => [],
     events: _ => [],
     date: null,
     fallAsleepTime: null,
@@ -68,7 +88,7 @@ class Entry extends PouchModel {
     return Entry.prefix + this.dateStr;
   }
 
-  static cleanEvents(events) {
+  static getCleanedEvents(events) {
     let newEvents = [];
     // Clean events
     for (let i=0; i<events.length; i++) {
@@ -80,11 +100,13 @@ class Entry extends PouchModel {
         let thisTimeAsleep = nextEvent.timestamp - event.timestamp;
         if (thisTimeAsleep < config.minSleepTime * 60 * 1000) {
           // don't count this event
+          event.skipped = true;
           continue;
         }
       } else if (event.type == 'AWAKE') {
         if (lastEvent && lastEvent.skipped) {
           // last sleep event wasn't counted, so we don't count the awakening.
+          event.skipped = true;
           continue;
         }
       }
@@ -154,7 +176,11 @@ class Entry extends PouchModel {
 
   async delete() {
     // unset entryId on all objects associated with this entry
-    const events = await Event.objects.find({selector: {entryId: this._id}});
+    const events = await Event.objects.find({
+      selector: {
+        _id: {$in: this.eventIds}
+      }
+    });
     for (let i=0; i<events.length; i++) {
       events[i].entryId = null;
       await events[i].save();

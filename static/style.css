@@ -1,3 +1,12 @@
+html {
+  /* https://materialpalettes.com/ */
+  --color-pr: #4fc2f7;
+  --color-co: #f8946a;
+  --color-a1: #29f6d0;
+  --color-a2: #7788fc;
+  --color-t1: #9e72fa;
+  --color-t2: #f629b5;
+}
 body {
   margin-bottom: 20px;
 }

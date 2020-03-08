@@ -136,13 +136,25 @@ router.get('/entries', 'entries', async (req, res, next) => {
 
 router.get('/entries/:date', 'entry', async (req, res, next) => {
   const context = getContext(req, res);
-  const date = req.params.date;
+  const dateStr = req.params.date;
+  const date = new Date(dateStr + 'T00:00:00');
+  const prevDate = new Date();
+  prevDate.setDate(date.getDate() - 1);
+  const nextDate = new Date();
+  nextDate.setDate(date.getDate() + 1);
+
+  context.date = date;
+  context.prevDate = prevDate;
+  context.nextDate = nextDate;
+
   try {
-    context.entry = await Entry.objects.get(date);
-    res.render('entry.html', context)
+    context.entry = await Entry.objects.get(dateStr);
   } catch(error) {
-    next(error);
+    if (error.status !== 404) {
+      next(error);
+    }
   }
+  res.render('entry.html', context)
 });
 
 router.post('/entries', 'entries', async (req, res, next) => {
@@ -155,7 +167,8 @@ router.post('/entries', 'entries', async (req, res, next) => {
       
       // create the entry
       const entry = new Entry()
-      entry.events = Entry.cleanEvents(events);
+      entry.eventIds = events.map(event => event._id);
+      entry.events = Entry.getCleanedEvents(events);
       entry.updateStats();
       console.log('Creating entry', entry.dateStr);
       await entry.save();

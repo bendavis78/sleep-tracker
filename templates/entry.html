@@ -8,67 +8,118 @@ table, form {
   box-shadow: none;
   -webkit-box-shadow: none;
 }
-#chart {
-  display: flex;
+.chart-wrapper {
   margin: 1em 0;
-  height: 50px;
   border: 1px solid #ccc;
+  background: #eee;
+}
+#chart {
+  height: 50px;
+  display: flex;
 }
 #chart .event {
   margin: 2px;
   min-width: 10px;
   background: #eee;
 }
+#chart .event.event-in-bed {
+  background: var(--color-a1);
+}
+#chart .event.event-sleep-start {
+  background: var(--color-pr);
+}
+#chart .event.event-sleeping {
+  background: var(--color-t1);
+}
+#chart .event.event-awake {
+  background: var(--color-t2);
+}
+#chart .event.event-out-of-bed {
+  background: var(--color-a2);
+}
+
+
 </style>
 {% endblock %}
 {% block content %}
-<h1>{{ entry.date|date("LL") }}</h1>
-<div id="chart"></div>
-<table class="table">
-  <tbody>
-    <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
-    <tr><th>Lights out:</th><td>{{ entry.sleepStartTime|date("h:mm a") }}</td></tr>
-    <tr><th>Fell asleep:</th><td>{{ entry.fallAsleepTime|date("h:mm a") }}</td></tr>
-    <tr><th>First awaking:</th><td>{{ entry.firstAwakeningTime|date("h:mm a") }}</td></tr>
-    <tr><th>Woke up:</th><td>{{ entry.wakeUpTime|date("h:mm a") }}</td></tr>
-    <tr><th>Out of bed:</th><td>{{ entry.outOfBedTime|date("h:mm a") }}</td></tr>
-    <tr><th>Time in bed:</th><td>{{ entry.timeInBed|duration }}</td></tr>
-    <tr><th>Time asleep:</th><td>{{ entry.timeAsleep|duration }}</td></tr>
-    <tr><th>Time awakened:</th><td>{{ entry.timeAwakened|duration }}</td></tr>
-    <tr><th>Total awakenings:</th><td>{{ entry.numAwakenings }}</td></tr>
-  </tbody>
-</table>
 
-<form method="post">
-  <input type="hidden" name="action" value="delete">
-  <button class="btn" type="submit">Delete</button>
-</form>
+<h1>
+  <a href="{{ url("entry", {"date": prevDate|date("YYYY-MM-DD")}) }}">&lt;</a>
+  {{ date|date("dddd, LL") }}
+  <a href="{{ url("entry", {"date": nextDate|date("YYYY-MM-DD")}) }}">&gt;</a>
+</h1>
+{% if entry %}
+  <div class="chart-wrapper">
+    <div id="chart"></div>
+  </div>
+  <table class="table">
+    <tbody>
+      <tr><th>Time in bed:</th><td>{{ entry.timeInBed|duration }}</td></tr>
+      <tr><th>Time asleep:</th><td>{{ entry.timeAsleep|duration }}</td></tr>
+      <tr><th>Time awakened:</th><td>{{ entry.timeAwakened|duration }}</td></tr>
+      <tr><th>Total awakenings:</th><td>{{ entry.numAwakenings }}</td></tr>
+      <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
+      <tr><th>Lights out:</th><td>{{ entry.sleepStartTime|date("h:mm a") }}</td></tr>
+      <tr><th>Fell asleep:</th><td>{{ entry.fallAsleepTime|date("h:mm a") }}</td></tr>
+      <tr><th>First awaking:</th><td>{{ entry.firstAwakeningTime|date("h:mm a") }}</td></tr>
+      <tr><th>Woke up:</th><td>{{ entry.wakeUpTime|date("h:mm a") }}</td></tr>
+      <tr><th>Out of bed:</th><td>{{ entry.outOfBedTime|date("h:mm a") }}</td></tr>
+    </tbody>
+  </table>
 
+  <form method="post">
+    <input type="hidden" name="action" value="delete">
+    <button class="btn" type="submit">Delete</button>
+  </form>
+
+{% else %}
+
+    <p>(no entry)</p>
+
+{% endif %}
 {% endblock %}
 
 {% block extrajs %}
 {{ super() }}
+{% if entry %}
 <script>
   // build chart
+  console.log('building chart');
   var events = {{ entry.serializedEvents|safe }};
   var totalTime = events[events.length-1].timestamp - events[0].timestamp;
   var chart = document.querySelector('#chart');
+  var sleepStartTime, wakeupTime;
   for (var i=0; i<events.length; i++) {
     var event = events[i];
-    if (events[i-1]) {
-      var percent = ((event.timestamp - events[i-1].timestamp) / totalTime) * 100;
+    if (events[i+1]) {
+      var duration = (events[i+1].timestamp - event.timestamp);
+      var percent = (duration / totalTime) * 100;
     } else {
       var percent = 0;
     }
+
+    if (event.type == 'SLEEP_START' && !sleepStartTime) sleepStartTime = event.timestamp;
+    if (event.type == 'SLEEPING' && !sleepStartTime) sleepStartTime = event.timestamp;
+    if (event.type == 'AWAKE') wakeUpTime = event.timestamp;
+
     var div = document.createElement('div');
     div.classList.add('event');
-    div.classList.add('event-' + event.type.toLowerCase());
+    div.classList.add('event-' + event.type.toLowerCase().replace(/_/g, '-'));
     div.dataset.timestamp = event.timestamp;
     div.dataset.type = event.type.toLowerCase().replace('_', '-');
     div.style.flexBasis = percent + '%';
     var timeStr = moment(new Date(event.timestamp)).format("h:mm a");
-    div.setAttribute('title', event.type.toLowerCase().replace('_', ' '));
+    var durationStr = duration ? App.formatDuration(duration) : '';
+    var typeName = event.type.toLowerCase().replace('_', ' ');
+    var label = timeStr + '\n' + typeName;
+    if (durationStr) label += '\n(' + durationStr + ')';
+    div.setAttribute('title', label);
     chart.appendChild(div);
   }
+  var timeTryingToSleep = wakeUpTime - sleepStartTime;
+  var barWidth = (timeTryingToSleep / (8 * 60 * 60 * 1000)) * 100;
+  chart.style.width = (barWidth > 100 ? 100 : barWidth) + '%';
+  console.log('width: ', barWidth, chart.style.width);
 </script>
+{% endif %}
 {% endblock %}

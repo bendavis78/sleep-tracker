@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Event - {{ Event.timestamp|date("llll") }}</h1>
-<pre>{{ event|json(2) }}</pre>
+<h1>Event - {{ event.timestamp|date("llll") }}</h1>
+<pre>{{ event.__doc|json(2) }}</pre>
 <form method="post">
   <input type="hidden" name="action" value="delete">
   <button class="btn" type="submit">Delete</button>
