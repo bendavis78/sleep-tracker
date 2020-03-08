@@ -15,3 +15,9 @@ body {
   line-height: 110%;
   margin: 1.52rem 0 .912rem 0;
 }
+
+@media screen and (max-width: 992px) {
+  #content h1 {
+    font-size: 1.9em;
+  }
+}

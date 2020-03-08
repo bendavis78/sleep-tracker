@@ -138,9 +138,9 @@ router.get('/entries/:date', 'entry', async (req, res, next) => {
   const context = getContext(req, res);
   const dateStr = req.params.date;
   const date = new Date(dateStr + 'T00:00:00');
-  const prevDate = new Date();
+  const prevDate = new Date(date);
   prevDate.setDate(date.getDate() - 1);
-  const nextDate = new Date();
+  const nextDate = new Date(date);
   nextDate.setDate(date.getDate() + 1);
 
   context.date = date;

@@ -13,6 +13,23 @@ table, form {
   border: 1px solid #ccc;
   background: #eee;
 }
+h1 {
+  display: flex;
+}
+h1 .dayname {
+  margin: 0 8px;
+}
+h1 .dayname span {
+  white-space: nowrap;
+}
+
+@media screen and (max-width: 800px) {
+  h1 .dayname {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 #chart {
   height: 50px;
   display: flex;
@@ -45,7 +62,10 @@ table, form {
 
 <h1>
   <a href="{{ url("entry", {"date": prevDate|date("YYYY-MM-DD")}) }}">&lt;</a>
-  {{ date|date("dddd, LL") }}
+  <span class="dayname">
+    <span>{{ date|date("dddd") }},</span>
+    <span>{{ date|date("LL") }}</span>
+  </span>
   <a href="{{ url("entry", {"date": nextDate|date("YYYY-MM-DD")}) }}">&gt;</a>
 </h1>
 {% if entry %}
