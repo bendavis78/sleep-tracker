@@ -50,7 +50,7 @@ h1 .dayname span {
 }
 #chart .event {
   margin: 2px;
-  min-width: 10px;
+  padding-right: 5px;
   background: #eee;
 }
 #chart .event.event-in-bed {
@@ -147,8 +147,8 @@ h1 .dayname span {
     var timeStr = moment(new Date(event.timestamp)).format("h:mm a");
     var durationStr = duration ? App.formatDuration(duration) : '';
     var typeName = event.type.toLowerCase().replace('_', ' ');
-    var label = timeStr + '\n' + typeName;
-    if (durationStr) label += '\n(' + durationStr + ')';
+    var label = timeStr + '<br>' + typeName;
+    if (durationStr) label += '<br>(' + durationStr + ')';
     div.dataset.label = label;
     chart.appendChild(div);
   }
@@ -174,7 +174,7 @@ h1 .dayname span {
     tooltip.style.display = 'block';
     tooltip.style.left = x + 'px';
     tooltip.style.top = y + 'px';
-    tooltip.textContent = eventEl.dataset.label;
+    tooltip.innerHTML = eventEl.dataset.label;
     currentToolTip = tooltip;
     document.body.appendChild(tooltip);
   }
