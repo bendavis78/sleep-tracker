@@ -194,10 +194,8 @@ router.post('/entries/:date', 'entry', async (req, res, next) => {
     const entry = await Entry.objects.get(date);
     if (req.body.action == 'delete') {
       await entry.delete();
-      res.redirect(url('entries'));
-    } else {
-      res.redirect(url('entry', {date: date}));
     }
+    res.redirect(url('entry', {date: date}));
   } catch(error) {
     next(error);
   }

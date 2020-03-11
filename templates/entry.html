@@ -8,11 +8,6 @@ table, form {
   box-shadow: none;
   -webkit-box-shadow: none;
 }
-.chart-wrapper {
-  margin: 1em 0;
-  border: 1px solid #ccc;
-  background: #eee;
-}
 h1 {
   display: flex;
 }
@@ -30,8 +25,27 @@ h1 .dayname span {
   }
 }
 
+.chart-wrapper {
+  margin: 1em 0;
+  border: 1px solid #ccc;
+  background: #eee;
+  position: relative;
+}
+.tooltip {
+  display: none;
+  background: black;
+  color: white;
+  position: absolute;
+  width: auto;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  padding: 5px;
+  border: 1px solid white;
+}
 #chart {
-  height: 50px;
+  --height: 50px;
+  height: var(--height);
   display: flex;
 }
 #chart .event {
@@ -78,12 +92,14 @@ h1 .dayname span {
       <tr><th>Time asleep:</th><td>{{ entry.timeAsleep|duration }}</td></tr>
       <tr><th>Time awakened:</th><td>{{ entry.timeAwakened|duration }}</td></tr>
       <tr><th>Total awakenings:</th><td>{{ entry.numAwakenings }}</td></tr>
+      <!--
       <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
       <tr><th>Lights out:</th><td>{{ entry.sleepStartTime|date("h:mm a") }}</td></tr>
       <tr><th>Fell asleep:</th><td>{{ entry.fallAsleepTime|date("h:mm a") }}</td></tr>
       <tr><th>First awaking:</th><td>{{ entry.firstAwakeningTime|date("h:mm a") }}</td></tr>
       <tr><th>Woke up:</th><td>{{ entry.wakeUpTime|date("h:mm a") }}</td></tr>
       <tr><th>Out of bed:</th><td>{{ entry.outOfBedTime|date("h:mm a") }}</td></tr>
+      -->
     </tbody>
   </table>
 
@@ -133,13 +149,45 @@ h1 .dayname span {
     var typeName = event.type.toLowerCase().replace('_', ' ');
     var label = timeStr + '\n' + typeName;
     if (durationStr) label += '\n(' + durationStr + ')';
-    div.setAttribute('title', label);
+    div.dataset.label = label;
     chart.appendChild(div);
   }
+
+  //var timeTryingToSleep2 = {{entry.wakeUpTime}} - {{entry.sleepStartTime}};
   var timeTryingToSleep = wakeUpTime - sleepStartTime;
   var barWidth = (timeTryingToSleep / (8 * 60 * 60 * 1000)) * 100;
   chart.style.width = (barWidth > 100 ? 100 : barWidth) + '%';
   console.log('width: ', barWidth, chart.style.width);
+
+
+  function hideToolTip() {
+    document.querySelectorAll('.tooltip').forEach(function(el) {
+      el.parentNode.removeChild(el);
+    });
+  }
+
+  function showToolTip(eventEl, x, y) {
+    hideToolTip();
+    var tooltip = document.createElement('div');
+    tooltip.setAttribute('id', 'tooltip_' + eventEl.dataset.timestamp);
+    tooltip.classList.add('tooltip');
+    tooltip.style.display = 'block';
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+    tooltip.textContent = eventEl.dataset.label;
+    currentToolTip = tooltip;
+    document.body.appendChild(tooltip);
+  }
+
+  document.body.addEventListener('mousemove', function(event) {
+    el = document.elementFromPoint(event.clientX, event.clientY);
+    if (el.dataset.label) {
+      showToolTip(el, event.clientX, event.clientY - 40);
+    } else {
+      hideToolTip();
+    }
+  });
+
 </script>
 {% endif %}
 {% endblock %}

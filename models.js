@@ -6,7 +6,7 @@ const db = require('./db').getDatabase();
 
 PouchModel.setDatabase(db);
 
-config.minSleepTime = config.minSleepTime || 20;
+config.minSleepTime = config.minSleepTime || 15;
 
 class EventManager extends PouchModel.manager {
   async resetOrphanedEvents() {
