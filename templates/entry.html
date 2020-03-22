@@ -103,6 +103,10 @@ h1 .dayname span {
     </tbody>
   </table>
 
+  <p>
+    <a href="{{ url("entry_events", {date: date|date("YYYY-MM-DD")}) }}">View all recorded events</a>
+  </p>
+
   <form method="post">
     <input type="hidden" name="action" value="delete">
     <button class="btn" type="submit">Delete</button>

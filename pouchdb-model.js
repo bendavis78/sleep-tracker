@@ -50,6 +50,16 @@ class PouchModelManager {
     opts.startkey = addPrefix(opts.startkey || '', prefix);
     opts.endkey = addPrefix(opts.endkey || '\uffff', prefix);
 
+    // swap starkey/endkey if descending
+    if (opts.descending) {
+      const startkey = opts.endkey;
+      const endkey = opts.startkey;
+      opts.startkey = startkey;
+      opts.endkey = endkey;
+    }
+
+    console.log(opts);
+
     // convert docs into model instances
     return this.__db.allDocs(opts).then(result => {
       let doc;

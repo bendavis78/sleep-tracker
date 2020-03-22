@@ -29,6 +29,6 @@
   },
   "scripts": {
     "start": "node server.js",
-    "devserver": "nodemon --inspect server.js"
+    "devserver": "nodemon --inspect --unhandled-rejections=strict server.js"
   }
 }

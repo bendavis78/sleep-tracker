@@ -63,10 +63,20 @@ class Entry extends PouchModel {
     numAwakenings: null
   }
 
-  get dateStr() {
-    if (this.date) {
-      return moment(this.date).format('YYYY-MM-DD')
+  get date() {
+    const date = super.get('date');
+    if (date) {
+      return new Date(date + 'T00:00:00');
     }
+    return null;
+  }
+
+  set date(val) {
+    super.set('date', moment(val).format('YYYY-MM-DD'))
+  }
+
+  get dateStr() {
+    return super.get('date');
   }
 
   get events() {

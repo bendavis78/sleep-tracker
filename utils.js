@@ -20,6 +20,24 @@ module.exports.getBedtimeDate = (dateval, cutoffHour) => {
   return datetime;
 }
 
+module.exports.getBedtimeRange = (dateval, cutoffHour) => {
+  cutoffHour = cutoffHour || 12;
+  let datetime = dateval;
+  if (!(datetime instanceof Date)) {
+    datetime = new Date(datetime);
+    if (isNaN(datetime.getTime())) {
+      throw new Error('invalid date:', datetime);
+    }
+  }
+  const starttime = new Date(dateval);
+  const endtime = new Date(dateval);
+  starttime.setHours(cutoffHour);
+  endtime.setDate(endtime.getDate() + 1);
+  endtime.setHours(cutoffHour);
+  endtime.setMinutes(endtime.getMinutes() - 1);
+  return [starttime, endtime];
+}
+
 module.exports.formatDuration = (duration) => {
   const seconds = Math.round(duration / 1000);
   const minutes = Math.floor(seconds / 60);

@@ -20,17 +20,17 @@ function setupIndexes(db) {
   });
   db.createIndex({
     index: {
-      fields: ['_id', 'entryId']
+      fields: ['entryId', '_id']
     }
   });
   db.createIndex({
     index: {
-      fields: ['entryId', 'type']
+      fields: ['type', 'entryId']
     }
   });
   db.createIndex({
     index: {
-      fields: ['entryId', 'type', 'timestamp']
+      fields: ['type', 'entryId', 'timestamp']
     }
   });
 }

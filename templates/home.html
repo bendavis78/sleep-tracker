@@ -12,6 +12,8 @@
 {% endblock %}
 
 {% block content %}
+<canvas id="chart"></canvas>
+
 {% if unloggedDays|length %}
 <div class="row">
   <ul class="col l6 offset-l3 m8 offset-m2 s12 collection with-header unlogged-events">
@@ -36,6 +38,84 @@
 
 {% block extrajs %}
 {{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+<script>
+  var ENTRIES = {{ chartEntries|safe }};
+  var data = {};
+  data.labels = [];
+  for (var i=0; i<ENTRIES.length; i++) {
+    var entry = ENTRIES[i];
+    data.labels.push(new Date(entry.date));
+  }
+
+  function hours(n) {
+    return (n / 1000 / 60 / 60).toFixed(1);
+  }
+  
+  data.datasets = [
+    {
+      label: 'Time asleep',
+      backgroundColor: 'red',
+      borderColor: 'red',
+      fill: false,
+      data: ENTRIES.map(function(entry) {return hours(entry.timeAsleep)})
+    },
+    {
+      label: 'Time in bed',
+      backgroundColor: 'green',
+      borderColor: 'green',
+      fill: false,
+      data: ENTRIES.map(function(entry) {return hours(entry.timeInBed)})
+    },
+    {
+      label: 'Time awakened',
+      backgroundColor: 'blue',
+      borderColor: 'blue',
+      fill: false,
+      data: ENTRIES.map(function(entry) {return hours(entry.timeAwakened)})
+    },
+    {
+      label: '# Awakenings',
+      backgroundColor: 'magenta',
+      borderColor: 'magenta',
+      fill: false,
+      data: ENTRIES.map(function(entry) {return entry.numAwakenings})
+    },
+  ];
+
+  var timeFormat = 'MMM D';
+
+  var ctx = document.getElementById('chart').getContext('2d');
+  var chart = new Chart(ctx, {
+    type: 'line',
+    data: data,
+    options: {
+      title: {
+        text: 'Last two weeks'
+      },
+      scales: {
+        xAxes: [{
+          type: 'time',
+          time: {
+            parser: timeFormat,
+            tooltipFormat: timeFormat
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Date'
+          }
+        }],
+        yAxes: [{
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours'
+          }
+        }]
+      },
+    }
+  });
+</script>
+
 <script>
   document.querySelectorAll('.unlogged-events .collection-item a').forEach(function(event) {
     event.addEventListener('click', function() {

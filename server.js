@@ -86,15 +86,18 @@ template.addFilter('json', (obj, indent) => {
 router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
 
-router.get('/', 'home', (req, res, next) => {
-  // get unlogged events and group by day
-  Event.objects.find({
-    selector: {
-      entryId: {$eq: null}
-    }
-  }).then(events => {
+router.get('/', 'home', async (req, res, next) => {
+  try {
     const context = getContext(req, res);
     const days = new Map();
+    const now = (new Date()).getTime()
+
+    // get unlogged events and group by day
+    const events = await Event.objects.find({
+      selector: {
+        entryId: {$eq: null}
+      }
+    });
     events.forEach(event => {
       let dateObj = days.get(event.date);
       if (!dateObj) {
@@ -111,8 +114,29 @@ router.get('/', 'home', (req, res, next) => {
         lastEvent: dateObj.events[dateObj.events.length - 1]._id
       });
     });
+
+    // Get entries for last 14 days
+    context.chartEntries = [];
+    const two_weeks = 14 * 24 * 60 * 60 * 1000;
+    const entries = await Entry.objects.find({
+      selector: {
+        date: {$gt: now - two_weeks}
+      }
+    });
+    entries.forEach(entry => {
+      context.chartEntries.push({
+        date: entry.date,
+        timeAsleep: entry.timeAsleep,
+        timeInBed: entry.timeInBed,
+        timeAwakened: entry.timeAwakened,
+        numAwakenings: entry.numAwakenings
+      });
+    });
+    context.chartEntries = JSON.stringify(context.chartEntries);
     res.render('home.html', context);
-  }).catch(error => next(error));
+  } catch(error) {
+    next(error);
+  }
 });
 
 router.get('/entries', 'entries', async (req, res, next) => {
@@ -120,13 +144,14 @@ router.get('/entries', 'entries', async (req, res, next) => {
   let startDate = Date.parse(req.query.from);
   let endDate = Date.parse(req.query.to);
 
-  const opts = {}
+  const opts = {};
 
   if (!isNaN(startDate)) opts.startkey = startDate.toString();
   if (!isNaN(endDate)) opts.endkey = endDate.toString();
 
   // get all sleep entries
   try {
+    opts.descending = true;
     context.entries = await Entry.objects.all(opts);
     res.render('entries.html', context)
   } catch(error) {
@@ -201,20 +226,41 @@ router.post('/entries/:date', 'entry', async (req, res, next) => {
   }
 });
 
+router.get('/entries/:date/events', 'entry_events', async (req, res, next) => {
+  try {
+    const context = getContext(req, res);
+
+    const entry = await Entry.objects.get(req.params.date);
+
+    const prevDate = new Date(entry.date);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const nextDate = new Date(entry.date);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    context.entry = entry;
+    context.prevDate = prevDate;
+    context.nextDate = nextDate;
+
+    // Get all events that were processed by the entry (designated by the event.entryId field)
+    // Note that some events may not be included in the entry's .events property, which is what shows
+    // on the entry detail page.
+    context.events = await Event.objects.find(
+      {selector: {entryId: entry.id}}
+    );
+
+    res.render('events.html', context)
+  } catch(err) {
+    return next(err);
+  }
+});
+
 router.get('/events', 'events', async (req, res, next) => {
   const context = getContext(req, res);
-  let startDate = Date.parse(req.query.from);
-  let endDate = Date.parse(req.query.to);
-  let startkey = 'entry:';
-  let endkey = 'entry\ufff0';
 
-  /* TODO use bedtime date */
-  /*
-  if (!isNaN(startDate)) startkey = 'entry:' + startDate.toString();
-  if (!isNaN(endDate)) endkey = 'entry:' + endDate.toString();
-  */
+  context.events = await Event.objects.find({
+    selector: {entryId: null}
+  });
 
-  context.events = await Event.objects.all();
   res.render('events.html', context)
 });
 

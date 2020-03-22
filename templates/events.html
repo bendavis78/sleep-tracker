@@ -1,13 +1,28 @@
 {% extends "base.html" %}
+{% block extracss %}
+<style>
+</style>
+{% endblock %}
 {% block content %}
-<h1>Events</h2>
+<h1>
+  {% if entry %}
+  <a href="{{ url("entry_events", {"date": prevDate|date("YYYY-MM-DD")}) }}">&lt;</a>
+  <span class="dayname">
+    <span>{{ entry.date|date("dddd") }},</span>
+    <span>{{ entry.date|date("LL") }}</span>
+  </span>
+  <a href="{{ url("entry_events", {"date": nextDate|date("YYYY-MM-DD")}) }}">&gt;</a>
+  {% else %}
+  <span>Unassigned events</span>
+  {% endif %}
+</h1>
 <table class="table">
   <thead>
     <th>Timestamp</th><th>Event type</th>
   </thead>
   <tbody>
     {% for event in events %}
-    <tr>
+    <tr{% if event.entryId %} data-entry-id="{{ event.entryId }}"{% endif %}>
       <td>
         <a href="{{ url('event', {timestamp: event.timestamp}) }}">
           {{ event.timestamp|date("llll") }}
