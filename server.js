@@ -11,6 +11,7 @@ const expressPouchDB = require('express-pouchdb');
 
 const config = require('./config');
 const utils = require('./utils');
+const {seconds, minutes, hours, days} = utils;
 const database = require('./db');
 const {Event, Entry} = require('./models');
 
@@ -115,12 +116,12 @@ router.get('/', 'home', async (req, res, next) => {
       });
     });
 
-    // Get entries for last 14 days
+    // Get entries for last 30 days
     context.chartEntries = [];
-    const two_weeks = 14 * 24 * 60 * 60 * 1000;
+    start = moment(now - utils.days(30)).format('YYYY-MM-DD');
     const entries = await Entry.objects.find({
       selector: {
-        date: {$gt: now - two_weeks}
+        date: {$gt: start}
       }
     });
     entries.forEach(entry => {
@@ -129,7 +130,8 @@ router.get('/', 'home', async (req, res, next) => {
         timeAsleep: entry.timeAsleep,
         timeInBed: entry.timeInBed,
         timeAwakened: entry.timeAwakened,
-        numAwakenings: entry.numAwakenings
+        numAwakenings: entry.numAwakenings,
+        notes: entry.notes
       });
     });
     context.chartEntries = JSON.stringify(context.chartEntries);
@@ -139,6 +141,9 @@ router.get('/', 'home', async (req, res, next) => {
   }
 });
 
+/**
+ * All entries
+ */
 router.get('/entries', 'entries', async (req, res, next) => {
   const context = getContext(req, res);
   let startDate = Date.parse(req.query.from);
@@ -158,30 +163,6 @@ router.get('/entries', 'entries', async (req, res, next) => {
     next(error);
   }
 });
-
-router.get('/entries/:date', 'entry', async (req, res, next) => {
-  const context = getContext(req, res);
-  const dateStr = req.params.date;
-  const date = new Date(dateStr + 'T00:00:00');
-  const prevDate = new Date(date);
-  prevDate.setDate(date.getDate() - 1);
-  const nextDate = new Date(date);
-  nextDate.setDate(date.getDate() + 1);
-
-  context.date = date;
-  context.prevDate = prevDate;
-  context.nextDate = nextDate;
-
-  try {
-    context.entry = await Entry.objects.get(dateStr);
-  } catch(error) {
-    if (error.status !== 404) {
-      next(error);
-    }
-  }
-  res.render('entry.html', context)
-});
-
 router.post('/entries', 'entries', async (req, res, next) => {
   if (req.body.action == 'createFromEvent') {
     try {
@@ -213,8 +194,61 @@ router.post('/entries', 'entries', async (req, res, next) => {
   }
 });
 
+
+/**
+ * Entry
+ */
+router.get('/entries/:date', 'entry', async (req, res, next) => {
+  const context = getContext(req, res);
+  const dateStr = req.params.date;
+  context.date = dateStr;
+  const date = new Date(dateStr + 'T00:00:00');
+  const prevDate = new Date(date);
+  prevDate.setDate(date.getDate() - 1);
+  const nextDate = new Date(date);
+  nextDate.setDate(date.getDate() + 1);
+
+  context.date = date;
+  context.prevDate = prevDate;
+  context.nextDate = nextDate;
+
+  try {
+    context.entry = await Entry.objects.get(dateStr);
+  } catch(error) {
+    if (error.status !== 404) {
+      return next(error);
+    }
+  }
+  res.render('entry.html', context)
+});
 router.post('/entries/:date', 'entry', async (req, res, next) => {
   const date = req.params.date;
+  try {
+    const entry = await Entry.objects.get(date);
+    entry.notes = req.body.notes;
+    await entry.save();
+    res.redirect(url('entry', {date: date}));
+  } catch(error) {
+    next(error);
+  }
+});
+
+
+/**
+ * Delete entry
+ */
+router.get('/entries/:date/delete', 'delete-entry', async (req, res, next) => {
+  const context = getContext(req, res);
+  try {
+    context.entry = await Entry.objects.get(dateStr);
+    res.render('delete-entry.html', context);
+  } catch(error) {
+    if (error.status !== 404) {
+      next(error);
+    }
+  }
+});
+router.post('/entries/:date/delete', 'delete-entry', async (req, res, next) => {
   try {
     const entry = await Entry.objects.get(date);
     if (req.body.action == 'delete') {
@@ -226,6 +260,10 @@ router.post('/entries/:date', 'entry', async (req, res, next) => {
   }
 });
 
+
+/**
+ * Entry events
+ */
 router.get('/entries/:date/events', 'entry_events', async (req, res, next) => {
   try {
     const context = getContext(req, res);
@@ -242,11 +280,11 @@ router.get('/entries/:date/events', 'entry_events', async (req, res, next) => {
     context.nextDate = nextDate;
 
     // Get all events that were processed by the entry (designated by the event.entryId field)
-    // Note that some events may not be included in the entry's .events property, which is what shows
-    // on the entry detail page.
-    context.events = await Event.objects.find(
-      {selector: {entryId: entry.id}}
-    );
+    // Note that some events may not be included in the entry's .events property, which is what
+    // shows on the entry detail page.
+    context.events = await Event.objects.find({
+      selector: {entryId: entry._id}
+    });
 
     res.render('events.html', context)
   } catch(err) {
@@ -254,6 +292,10 @@ router.get('/entries/:date/events', 'entry_events', async (req, res, next) => {
   }
 });
 
+
+/**
+ * All events
+ */
 router.get('/events', 'events', async (req, res, next) => {
   const context = getContext(req, res);
 
@@ -264,6 +306,10 @@ router.get('/events', 'events', async (req, res, next) => {
   res.render('events.html', context)
 });
 
+
+/**
+ * Event
+ */
 router.get('/events/:timestamp', 'event', async (req, res, next) => {
   const context = getContext(req, res);
   const timestamp = req.params.timestamp;
@@ -274,7 +320,6 @@ router.get('/events/:timestamp', 'event', async (req, res, next) => {
     next(error);
   }
 });
-
 router.post('/events/:timestamp', 'event', async (req, res, next) => {
   const timestamp = req.params.timestamp;
   try {
@@ -289,6 +334,7 @@ router.post('/events/:timestamp', 'event', async (req, res, next) => {
     next(error);
   }
 });
+
 
 app.use(path.posix.join(config.prefix, 'db'), PouchServer);
 app.use(path.posix.join(config.prefix, 'static'), express.static(STATIC_DIR))

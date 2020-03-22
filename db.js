@@ -15,6 +15,11 @@ PouchDB.plugin(pouchdbFind);
 function setupIndexes(db) {
   db.createIndex({
     index: {
+      fields: ['date']
+    }
+  });
+  db.createIndex({
+    index: {
       fields: ['entryId']
     }
   });

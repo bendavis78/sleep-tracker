@@ -60,7 +60,8 @@ class Entry extends PouchModel {
     timeInBed: null,
     timeAsleep: null,
     timeAwakened: null,
-    numAwakenings: null
+    numAwakenings: null,
+    notes: ''
   }
 
   get date() {

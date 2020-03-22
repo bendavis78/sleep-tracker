@@ -2,6 +2,10 @@
 {% block extracss %}
 {{ super() }}
 <style>
+#chart {
+  max-width: 960px;
+  margin: 20px auto;
+}
 .unlogged-events a {
   cursor: pointer;
 }
@@ -62,6 +66,7 @@
     },
     {
       label: 'Time in bed',
+      hidden: true,
       backgroundColor: 'green',
       borderColor: 'green',
       fill: false,
@@ -69,6 +74,7 @@
     },
     {
       label: 'Time awakened',
+      hidden: true,
       backgroundColor: 'blue',
       borderColor: 'blue',
       fill: false,
@@ -76,14 +82,13 @@
     },
     {
       label: '# Awakenings',
+      hidden: true,
       backgroundColor: 'magenta',
       borderColor: 'magenta',
       fill: false,
       data: ENTRIES.map(function(entry) {return entry.numAwakenings})
     },
   ];
-
-  var timeFormat = 'MMM D';
 
   var ctx = document.getElementById('chart').getContext('2d');
   var chart = new Chart(ctx, {
@@ -93,12 +98,24 @@
       title: {
         text: 'Last two weeks'
       },
+      tooltips: {
+        mode: 'x',
+        intersect: false,
+        position: 'nearest',
+        callbacks: {
+          footer: function(tooltipItem, data) {
+            var entry = ENTRIES[tooltipItem[0].index];
+            return '\n' + entry.notes;
+          }
+        }
+      },
       scales: {
         xAxes: [{
           type: 'time',
           time: {
-            parser: timeFormat,
-            tooltipFormat: timeFormat
+            parser: 'MMM D',
+            round: 'day',
+            tooltipFormat: 'ddd, MMM D'
           },
           scaleLabel: {
             display: true,

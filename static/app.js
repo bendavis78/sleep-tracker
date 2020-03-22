@@ -56,5 +56,10 @@ module.exports.formatDuration = (duration) => {
   return seconds + 's';
 }
 
+module.exports.seconds = n => n * 1000;
+module.exports.minutes = n => n * module.exports.seconds(60);
+module.exports.hours = n => n * module.exports.minutes(60);
+module.exports.days = n => n * module.exports.hours(24);
+
 },{}]},{},[1])(1)
 });

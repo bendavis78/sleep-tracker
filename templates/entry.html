@@ -18,6 +18,15 @@ h1 .dayname span {
   white-space: nowrap;
 }
 
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+}
+.button-row .btn {
+  margin-top: 1em;
+  margin-left: 1em;
+}
+
 @media screen and (max-width: 800px) {
   h1 .dayname {
     flex: 1;
@@ -83,34 +92,42 @@ h1 .dayname span {
   <a href="{{ url("entry", {"date": nextDate|date("YYYY-MM-DD")}) }}">&gt;</a>
 </h1>
 {% if entry %}
-  <div class="chart-wrapper">
-    <div id="chart"></div>
-  </div>
-  <table class="table">
-    <tbody>
-      <tr><th>Time in bed:</th><td>{{ entry.timeInBed|duration }}</td></tr>
-      <tr><th>Time asleep:</th><td>{{ entry.timeAsleep|duration }}</td></tr>
-      <tr><th>Time awakened:</th><td>{{ entry.timeAwakened|duration }}</td></tr>
-      <tr><th>Total awakenings:</th><td>{{ entry.numAwakenings }}</td></tr>
-      <!--
-      <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
-      <tr><th>Lights out:</th><td>{{ entry.sleepStartTime|date("h:mm a") }}</td></tr>
-      <tr><th>Fell asleep:</th><td>{{ entry.fallAsleepTime|date("h:mm a") }}</td></tr>
-      <tr><th>First awaking:</th><td>{{ entry.firstAwakeningTime|date("h:mm a") }}</td></tr>
-      <tr><th>Woke up:</th><td>{{ entry.wakeUpTime|date("h:mm a") }}</td></tr>
-      <tr><th>Out of bed:</th><td>{{ entry.outOfBedTime|date("h:mm a") }}</td></tr>
-      -->
-    </tbody>
-  </table>
+  <form method="post">
+    <div class="chart-wrapper">
+      <div id="chart"></div>
+    </div>
+    <table class="table">
+      <tbody>
+        <tr><th>Time in bed:</th><td>{{ entry.timeInBed|duration }}</td></tr>
+        <tr><th>Time asleep:</th><td>{{ entry.timeAsleep|duration }}</td></tr>
+        <tr><th>Time awakened:</th><td>{{ entry.timeAwakened|duration }}</td></tr>
+        <tr><th>Total awakenings:</th><td>{{ entry.numAwakenings }}</td></tr>
+        <!--
+        <tr><th>Went to bed:</th><td>{{ entry.inBedTime|date("h:mm a") }}</td></tr>
+        <tr><th>Lights out:</th><td>{{ entry.sleepStartTime|date("h:mm a") }}</td></tr>
+        <tr><th>Fell asleep:</th><td>{{ entry.fallAsleepTime|date("h:mm a") }}</td></tr>
+        <tr><th>First awaking:</th><td>{{ entry.firstAwakeningTime|date("h:mm a") }}</td></tr>
+        <tr><th>Woke up:</th><td>{{ entry.wakeUpTime|date("h:mm a") }}</td></tr>
+        <tr><th>Out of bed:</th><td>{{ entry.outOfBedTime|date("h:mm a") }}</td></tr>
+        -->
+      </tbody>
+    </table>
+    <div class="row">
+      <div class="input-field col s12">
+        <textarea name="notes" class="materialize-textarea" id="notes">{{ entry.notes }}</textarea>
+        <label for="notes">Notes</label>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <a class="btn" href="{{ url("delete-entry", {"date": date}) }}">Delete</a>
+      <button class="btn" type="submit">Save</button>
+    </div>
+  </form>
 
   <p>
     <a href="{{ url("entry_events", {date: date|date("YYYY-MM-DD")}) }}">View all recorded events</a>
   </p>
-
-  <form method="post">
-    <input type="hidden" name="action" value="delete">
-    <button class="btn" type="submit">Delete</button>
-  </form>
 
 {% else %}
 
