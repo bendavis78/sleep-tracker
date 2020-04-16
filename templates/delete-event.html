@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Delete Event - {{ event.timestamp|date("llll") }}</h1>
+<p>
+  Are you sure you want to delete the following event?
+</p>
+<form method="post">
+  <input type="hidden" name="action" value="delete">
+  <p>
+    <button type="submit">Delete Event</button>
+  </p>
+</form>
+<pre>{{ doc|json(2) }}</pre>
+
+{% endblock %}

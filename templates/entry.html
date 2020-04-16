@@ -120,7 +120,7 @@ h1 .dayname span {
     </div>
 
     <div class="button-row">
-      <a class="btn" href="{{ url("delete-entry", {"date": date}) }}">Delete</a>
+      <a class="btn" href="{{ url("delete-entry", {"date": entry.dateStr}) }}">Delete</a>
       <button class="btn" type="submit">Save</button>
     </div>
   </form>

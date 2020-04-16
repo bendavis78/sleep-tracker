@@ -73,7 +73,7 @@ template.addFilter('date', (date, format) => {
   if (Number.isInteger(date)) {
     date = parseInt(date);
   }
-  return moment(date).format(format);
+  return moment(date).format(format || undefined);
 });
 
 template.addFilter('duration', (duration) => {
@@ -92,6 +92,20 @@ router.get('/', 'home', async (req, res, next) => {
     const context = getContext(req, res);
     const days = new Map();
     const now = (new Date()).getTime()
+
+    // get first entry, don't go before that date
+    if (req.query.start) {
+      const firstEntryResult = await Entry.objects.allDocs({startkey: '\u0000', limit: 1});
+      if (firstEntryResult.rows.length > 0) {
+        const firstEntry = firstEntryResult.rows[0].doc;
+        const firstDate = moment(firstEntry.date).format('YYYY-MM-DD');
+        if (firstEntry && firstDate > req.query.start) {
+          p = new URLSearchParams(req.query);
+          p.set('start', firstDate);
+          return res.redirect('?' + p.toString());
+        }
+      }
+    }
 
     // get unlogged events and group by day
     const events = await Event.objects.find({
@@ -116,14 +130,33 @@ router.get('/', 'home', async (req, res, next) => {
       });
     });
 
-    // Get entries for last 30 days
+    // get number of days to show from querystring
+    let periodDays = parseInt(req.query.period);
+    if (isNaN(periodDays)) {
+      periodDays = 30;
+    }
+    context.periodDays = periodDays;
+
+    // get start date from query string
+    let start = req.query.start;
+    if (!start) {
+      start = moment(now - utils.days(periodDays)).format('YYYY-MM-DD');
+    }
+    context.start = start;
+
+    // calculate end date
+    const startDate = new Date(start);
+    const endDate = new Date(start);
+    endDate.setDate(startDate.getDate() + periodDays);
+    const end = moment(endDate).format('YYYY-MM-DD');
+
     context.chartEntries = [];
-    start = moment(now - utils.days(30)).format('YYYY-MM-DD');
     const entries = await Entry.objects.find({
       selector: {
-        date: {$gt: start}
+        date: {$gt: start, $lte: end}
       }
     });
+
     entries.forEach(entry => {
       context.chartEntries.push({
         date: entry.date,
@@ -209,6 +242,7 @@ router.get('/entries/:date', 'entry', async (req, res, next) => {
   nextDate.setDate(date.getDate() + 1);
 
   context.date = date;
+  context.dateStr = date;
   context.prevDate = prevDate;
   context.nextDate = nextDate;
 
@@ -239,8 +273,14 @@ router.post('/entries/:date', 'entry', async (req, res, next) => {
  */
 router.get('/entries/:date/delete', 'delete-entry', async (req, res, next) => {
   const context = getContext(req, res);
+  const dateStr = req.params.date;
+  const date = new Date(dateStr + 'T00:00:00');
   try {
     context.entry = await Entry.objects.get(dateStr);
+    context.doc = Object.assign({}, context.entry.__doc);
+    delete context.doc.eventIds;
+    delete context.doc.events;
+    context.date = date;
     res.render('delete-entry.html', context);
   } catch(error) {
     if (error.status !== 404) {
@@ -250,11 +290,12 @@ router.get('/entries/:date/delete', 'delete-entry', async (req, res, next) => {
 });
 router.post('/entries/:date/delete', 'delete-entry', async (req, res, next) => {
   try {
-    const entry = await Entry.objects.get(date);
+    const dateStr = req.params.date;
+    const entry = await Entry.objects.get(dateStr);
     if (req.body.action == 'delete') {
       await entry.delete();
     }
-    res.redirect(url('entry', {date: date}));
+    res.redirect(url('entry', {date: dateStr}));
   } catch(error) {
     next(error);
   }
@@ -307,6 +348,29 @@ router.get('/events', 'events', async (req, res, next) => {
 });
 
 
+function updateEventFromPost(event, data) {
+  event.timestamp = new Date(data.timestamp).getTime();
+  event.type = data.type;
+}
+
+/**
+ * New event
+ */
+router.get('/events/add', 'add-event', async (req, res, next) => {
+  const context = getContext(req, res);
+  return res.render('event.html', context);
+});
+router.post('/events/add', 'add-event', async(req, res, next) => {
+  try {
+    const event = new Event();
+    updateEventFromPost(event, req.body);
+    await event.save();
+    res.redirect(url('event', {timestamp: event.timestamp}));
+  } catch(error) {
+    next(error);
+  }
+});
+
 /**
  * Event
  */
@@ -320,21 +384,49 @@ router.get('/events/:timestamp', 'event', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * Save event
+ */
 router.post('/events/:timestamp', 'event', async (req, res, next) => {
   const timestamp = req.params.timestamp;
   try {
     const event = await Event.objects.get(timestamp);
-    if (req.body.action == 'delete') {
-      await event.delete();
-      res.redirect(url('events'));
-    } else {
-      res.redirect(url('event', {timestamp: timestamp}));
-    }
+    updateEventFromPost(event, req.body);
+    await event.save();
+    res.redirect(url('event', {timestamp: timestamp}));
   } catch(error) {
     next(error);
   }
 });
 
+/**
+ * Delete event
+ */
+router.get('/events/:timestamp/delete', 'delete-event', async (req, res, next) => {
+  const context = getContext(req, res);
+  const timestamp = req.params.timestamp;
+  try {
+    context.event = await Event.objects.get(timestamp);
+    context.doc = Object.assign({}, context.event.__doc);
+    res.render('delete-event.html', context);
+  } catch(error) {
+    if (error.status !== 404) {
+      next(error);
+    }
+  }
+});
+router.post('/events/:timestamp/delete', 'delete-event', async (req, res, next) => {
+  try {
+    const timestamp = req.params.timestamp;
+    const event = await Event.objects.get(timestamp);
+    if (req.body.action == 'delete') {
+      await event.delete();
+    }
+    res.redirect(url('events'));
+  } catch(error) {
+    next(error);
+  }
+});
 
 app.use(path.posix.join(config.prefix, 'db'), PouchServer);
 app.use(path.posix.join(config.prefix, 'static'), express.static(STATIC_DIR))

@@ -7,6 +7,7 @@ const db = require('./db').getDatabase();
 PouchModel.setDatabase(db);
 
 config.minSleepTime = config.minSleepTime || 15;
+config.idealSleepCycleMinutes = config.idealSleepCycleMinutes || 90;
 
 class EventManager extends PouchModel.manager {
   async resetOrphanedEvents() {
@@ -61,6 +62,7 @@ class Entry extends PouchModel {
     timeAsleep: null,
     timeAwakened: null,
     numAwakenings: null,
+    sleepEfficiency: null,
     notes: ''
   }
 
@@ -131,6 +133,8 @@ class Entry extends PouchModel {
     let date, inBedTime, sleepStartTime, fallAsleepTime, firstAwakeningTime, wakeUpTime, outOfBedTime;
     let timeInBed = 0, timeAsleep = 0, numAwakenings = 0, timeAwakened = 0;
 
+    let idealSleepCycleDuration = config.idealSleepCycleMinutes * 60 * 1000;
+
     // Loop through cleaned events and calculate stats
     let lastAwakening;
     for (let i=0; i<events.length; i++) {
@@ -156,6 +160,7 @@ class Entry extends PouchModel {
       } else if (event.type == 'AWAKE') {
         if (!firstAwakeningTime) firstAwakeningTime = event.timestamp;
         if (nextEvent.type == 'SLEEPING') {
+          // Record awakening
           timeAwakened += nextEvent.timestamp - event.timestamp;
           numAwakenings += 1;
         }

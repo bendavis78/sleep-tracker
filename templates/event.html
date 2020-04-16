@@ -1,9 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
+{% if event._id %}
 <h1>Event - {{ event.timestamp|date("llll") }}</h1>
-<pre>{{ event.__doc|json(2) }}</pre>
+{% else %}
+<h1>New Event</h1>
+{% endif %}
 <form method="post">
-  <input type="hidden" name="action" value="delete">
-  <button class="btn" type="submit">Delete</button>
+  <div class="row">
+    <div class="col s12 m6 input-field">
+      <input id="timestamp" type="text" name="timestamp" placeholder="YYYY-MM-DDTHH:MM:SS±HH:MM" value="{{ event.timestamp|date }}">
+      <label for="timestamp">Timestamp</label>
+    </div>
+    <div class="col s12 m6 input-field">
+      <select id="type" name="type">
+        <option{% if event.type == "IN_BED" %} selected{% endif %} value="IN_BED">IN_BED</option>
+        <option{% if event.type == "SLEEP_START" %} selected{% endif %} value="SLEEP_START">SLEEP_START</option>
+        <option{% if event.type == "SLEEPING" %} selected{% endif %} value="SLEEPING">SLEEPING</option>
+        <option{% if event.type == "AWAKE" %} selected{% endif %} value="AWAKE">AWAKE</option>
+        <option{% if event.type == "OUT_OF_BED" %} selected{% endif %} value="OUT_OF_BED">OUT_OF_BED</option>
+      </select>
+      <label for="type">Type</label>
+    </div>
+  </div>
+  <div class="button-row">
+    {% if event._id %}
+    <a class="btn" href="{{ url("delete-event", {"timestamp": event.timestamp}) }}">Delete</a>
+    {% endif %}
+    <button class="btn" type="submit">Save</button>
+  </div>
 </form>
+{% endblock %}
+
+{% block extrajs %}
+{{ super() }}
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    var elems = document.querySelectorAll('select');
+    var instances = M.FormSelect.init(elems);
+  });
+</script>
 {% endblock %}

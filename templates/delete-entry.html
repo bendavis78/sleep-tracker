@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Delete Entry - {{ date|date("dddd, LL") }}</h1>
+<p>
+  Are you sure you want to delete the following entry?
+</p>
+<form method="post">
+  <input type="hidden" name="action" value="delete">
+  <p>
+    <button type="submit">Delete Entry</button>
+  </p>
+</form>
+<pre>{{ doc|json(2) }}</pre>
+
+{% endblock %}
