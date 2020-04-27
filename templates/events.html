@@ -24,7 +24,7 @@
     {% for event in events %}
     <tr{% if event.entryId %} data-entry-id="{{ event.entryId }}"{% endif %}>
       <td>
-        <a href="{{ url('event', {timestamp: event.timestamp}) }}">
+        <a href="{{ url('event', {id: event._id}) }}">
           {{ event.timestamp|date("llll") }}
         </a>
       </td>

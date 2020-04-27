@@ -365,7 +365,7 @@ router.post('/events/add', 'add-event', async(req, res, next) => {
     const event = new Event();
     updateEventFromPost(event, req.body);
     await event.save();
-    res.redirect(url('event', {timestamp: event.timestamp}));
+    res.redirect(url('event', {id: event._id}));
   } catch(error) {
     next(error);
   }
@@ -374,11 +374,11 @@ router.post('/events/add', 'add-event', async(req, res, next) => {
 /**
  * Event
  */
-router.get('/events/:timestamp', 'event', async (req, res, next) => {
+router.get('/events/:id', 'event', async (req, res, next) => {
   const context = getContext(req, res);
-  const timestamp = req.params.timestamp;
+  const id = req.params.id;
   try {
-    context.event = await Event.objects.get(timestamp);
+    context.event = await Event.objects.get(id);
     return res.render('event.html', context);
   } catch(error) {
     next(error);
@@ -387,13 +387,13 @@ router.get('/events/:timestamp', 'event', async (req, res, next) => {
 /**
  * Save event
  */
-router.post('/events/:timestamp', 'event', async (req, res, next) => {
-  const timestamp = req.params.timestamp;
+router.post('/events/:id', 'event', async (req, res, next) => {
+  const id = req.params.id;
   try {
-    const event = await Event.objects.get(timestamp);
+    const event = await Event.objects.get(id);
     updateEventFromPost(event, req.body);
     await event.save();
-    res.redirect(url('event', {timestamp: timestamp}));
+    res.redirect(url('event', {id: id}));
   } catch(error) {
     next(error);
   }
@@ -402,23 +402,21 @@ router.post('/events/:timestamp', 'event', async (req, res, next) => {
 /**
  * Delete event
  */
-router.get('/events/:timestamp/delete', 'delete-event', async (req, res, next) => {
+router.get('/events/:id/delete', 'delete-event', async (req, res, next) => {
   const context = getContext(req, res);
-  const timestamp = req.params.timestamp;
+  const id = req.params.id;
   try {
-    context.event = await Event.objects.get(timestamp);
+    context.event = await Event.objects.get(id);
     context.doc = Object.assign({}, context.event.__doc);
     res.render('delete-event.html', context);
   } catch(error) {
-    if (error.status !== 404) {
-      next(error);
-    }
+    next(error);
   }
 });
-router.post('/events/:timestamp/delete', 'delete-event', async (req, res, next) => {
+router.post('/events/:id/delete', 'delete-event', async (req, res, next) => {
   try {
-    const timestamp = req.params.timestamp;
-    const event = await Event.objects.get(timestamp);
+    const id = req.params.id;
+    const event = await Event.objects.get(id);
     if (req.body.action == 'delete') {
       await event.delete();
     }

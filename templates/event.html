@@ -24,7 +24,7 @@
   </div>
   <div class="button-row">
     {% if event._id %}
-    <a class="btn" href="{{ url("delete-event", {"timestamp": event.timestamp}) }}">Delete</a>
+    <a class="btn" href="{{ url("delete-event", {"id": event._id}) }}">Delete</a>
     {% endif %}
     <button class="btn" type="submit">Save</button>
   </div>
